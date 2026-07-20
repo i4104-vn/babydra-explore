@@ -5,6 +5,7 @@ use std::rc::Rc;
 use babydra_common::FileEntry;
 use std::cell::RefCell;
 
+/// Creates an explore-specific flowbox child grid cell representing a single file/folder.
 pub fn create_flow_child(
     idx: usize,
     entry: &FileEntry,
@@ -54,7 +55,13 @@ pub fn create_flow_child(
     let is_dir = matches!(entry.file_type, babydra_common::FileType::Directory);
     let nav_c = nav_callback.clone();
     double_click_gesture.connect_pressed(move |_, n_press, _, _| {
-        if n_press == 2 {
+        let settings = babydra_common::load_explore_settings();
+        let trigger = if settings.double_click_to_open {
+            n_press == 2
+        } else {
+            n_press == 1
+        };
+        if trigger {
             if is_dir {
                 nav_c(target_path.clone());
             } else {

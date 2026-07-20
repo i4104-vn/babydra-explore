@@ -2,7 +2,7 @@ use std::rc::Rc;
 use std::cell::{RefCell, Cell};
 use std::path::PathBuf;
 use gtk4::prelude::*;
-use babydra_common::{SessionState, ActivePane, ContentViewHandle};
+use babydra_common::{SessionState, ActivePane};
 use crate::widgets::status_bar::StatusBarWidgets;
 
 /// Registers keyboard shortcut events (F3 for split view, F4 for preview pane, Ctrl+H for hidden files).
@@ -102,21 +102,4 @@ pub fn setup_dbus_receiver(
             eprintln!("Failed to start D-Bus service: {}", e);
         }
     });
-}
-
-/// Registers the system dark/light mode preference change notifier.
-pub fn setup_theme_listener(
-    left_content_handle: Rc<ContentViewHandle>,
-    right_content_handle: Rc<RefCell<Option<Rc<ContentViewHandle>>>>,
-) {
-    if let Some(settings) = gtk4::Settings::default() {
-        let left_handle = left_content_handle.clone();
-        let right_handle = right_content_handle.clone();
-        settings.connect_gtk_application_prefer_dark_theme_notify(move |_| {
-            crate::widgets::content_view::update_content_view_ui(&left_handle);
-            if let Some(ref rh) = *right_handle.borrow() {
-                crate::widgets::content_view::update_content_view_ui(rh);
-            }
-        });
-    }
 }
