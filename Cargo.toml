@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 babydra-common = { workspace = true }
 babydra-utils = { workspace = true }
+babydra-explore-kit = { workspace = true }
 
 # GUI
 gtk4 = { version = "0.9", features = ["v4_10"] }
