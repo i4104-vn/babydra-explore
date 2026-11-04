@@ -9,6 +9,7 @@ use std::rc::Rc;
 
 mod devices;
 mod handlers;
+pub mod icon;
 mod render;
 
 use handlers::{add_sidebar_item, SidebarItemArgs};
@@ -40,7 +41,7 @@ pub fn create_sidebar(
     logo_btn.set_valign(gtk4::Align::Center);
     logo_btn.set_size_request(44, 44);
 
-    let logo_img = babydra_ui_kit::ui::icon::get_theme_or_svg_icon("babydra-explore", 26);
+    let logo_img = icon::get_sidebar_icon("babydra-explore", 26);
     logo_img.set_pixel_size(26);
     logo_img.set_valign(gtk4::Align::Center);
     logo_img.set_halign(gtk4::Align::Center);
@@ -325,6 +326,7 @@ pub fn create_sidebar(
         let theme = gtk4::IconTheme::for_display(&display);
         let rb_theme = rebuild_sidebar.clone();
         theme.connect_changed(move |_| {
+            icon::clear_icon_cache();
             if let Some(ref rb) = *rb_theme.borrow() {
                 rb();
             }
