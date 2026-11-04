@@ -89,10 +89,10 @@ pub fn update_info_panel(widgets: &InfoPanelWidgets, selection: &[FileEntry]) {
             widgets.img_preview_picture.set_filename(Some(&entry.path));
             widgets.stack.set_visible_child_name("image_picture");
         } else {
-            babydra_ui_kit::ui::icon::set_fallback_icon(
+            crate::widgets::sidebar::icon::set_file_entry_icon(
                 &widgets.img_preview_icon,
-                &entry.icon_name,
-                "text-x-generic",
+                entry,
+                96,
             );
             widgets.stack.set_visible_child_name("image_icon");
         }

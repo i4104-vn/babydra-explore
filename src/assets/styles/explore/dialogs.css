@@ -416,3 +416,50 @@ button.properties-btn-cancel {
     font-size: 12px;
     opacity: 0.65;
 }
+
+/* Circular icon badges in settings dialog and action rows */
+.blue-icon-badge-sm {
+    min-width: 34px;
+    min-height: 34px;
+    max-width: 34px;
+    max-height: 34px;
+    width: 34px;
+    height: 34px;
+    border-radius: 9999px;
+    padding: 0;
+    margin: 0;
+    background-color: rgba(29, 104, 189, 0.15);
+    border: 1px solid rgba(29, 104, 189, 0.30);
+    color: #60A5FA;
+}
+
+.blue-icon-badge-sm image,
+.blue-icon-badge-sm picture {
+    min-width: 18px;
+    min-height: 18px;
+    max-width: 18px;
+    max-height: 18px;
+    margin: 7px;
+    padding: 0;
+}
+
+.blue-icon-badge {
+    min-width: 44px;
+    min-height: 44px;
+    max-width: 44px;
+    max-height: 44px;
+    width: 44px;
+    height: 44px;
+    border-radius: 9999px;
+    padding: 0;
+    margin: 0;
+    background-color: rgba(29, 104, 189, 0.15);
+    border: 1px solid rgba(29, 104, 189, 0.30);
+    color: #60A5FA;
+}
+
+.blue-icon-badge image,
+.blue-icon-badge picture {
+    margin: 10px;
+    padding: 0;
+}

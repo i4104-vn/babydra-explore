@@ -49,6 +49,18 @@ pub fn build_general_page() -> ScrolledWindow {
         let row_widget = ListBoxRow::new();
         row_widget.add_css_class("settings-card-row");
         let (row, switch) = create_switch_row(icon, title, desc, initial);
+        if let Some(badge) = row.first_child() {
+            badge.set_valign(Align::Center);
+            badge.set_halign(Align::Start);
+            badge.set_hexpand(false);
+            badge.set_vexpand(false);
+            if let Some(img) = badge.first_child() {
+                img.set_valign(Align::Center);
+                img.set_halign(Align::Center);
+                img.set_hexpand(false);
+                img.set_vexpand(false);
+            }
+        }
         switch.connect_state_set(move |state| {
             on_change(state);
         });

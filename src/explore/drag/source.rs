@@ -102,6 +102,11 @@ pub fn create_drag_source(
         }
     }
 
+    if let Some(texture) = crate::widgets::sidebar::icon::get_icon_paintable(icon_name, preview_path, 48) {
+        drag_source.set_icon(Some(&texture), 24, 24);
+        return drag_source;
+    }
+
     let display = gtk4::gdk::Display::default().unwrap();
     let icon_theme = gtk4::IconTheme::for_display(&display);
     let paintable = icon_theme.lookup_icon(

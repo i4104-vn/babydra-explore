@@ -39,10 +39,11 @@ pub fn create_sidebar(
     logo_btn.set_cursor_from_name(Some("pointer"));
     logo_btn.set_halign(gtk4::Align::Center);
     logo_btn.set_valign(gtk4::Align::Center);
-    logo_btn.set_size_request(44, 44);
+    logo_btn.set_size_request(40, 40);
+    logo_btn.set_margin_bottom(10);
 
-    let logo_img = icon::get_sidebar_icon("babydra-explore", 26);
-    logo_img.set_pixel_size(26);
+    let logo_img = icon::get_sidebar_icon("babydra-explore", 28);
+    logo_img.set_pixel_size(28);
     logo_img.set_valign(gtk4::Align::Center);
     logo_img.set_halign(gtk4::Align::Center);
     logo_btn.set_child(Some(&logo_img));
@@ -130,6 +131,8 @@ pub fn create_sidebar(
 
     let profile_sep = gtk4::Separator::new(gtk4::Orientation::Horizontal);
     profile_sep.add_css_class("profile-separator");
+    profile_sep.set_margin_top(2);
+    profile_sep.set_margin_bottom(8);
 
     let top_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     top_box.set_halign(gtk4::Align::Center);

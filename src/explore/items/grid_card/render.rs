@@ -41,8 +41,7 @@ pub fn build_grid_card_ui(entry: &FileEntry) -> Box {
         overlay.set_halign(Align::Center);
         overlay.set_valign(Align::Center);
 
-        let temp_icon = babydra_ui_kit::ui::icon::get_fallback_icon(&entry.icon_name, "text-x-generic");
-        temp_icon.set_pixel_size(64);
+        let temp_icon = crate::widgets::sidebar::icon::get_file_entry_icon(entry, 64);
         temp_icon.set_halign(Align::Center);
         temp_icon.set_valign(Align::Center);
 
@@ -79,8 +78,7 @@ pub fn build_grid_card_ui(entry: &FileEntry) -> Box {
             }
         });
     } else {
-        let icon = babydra_ui_kit::ui::icon::get_fallback_icon(&entry.icon_name, "text-x-generic");
-        icon.set_pixel_size(68);
+        let icon = crate::widgets::sidebar::icon::get_file_entry_icon(entry, 68);
         icon.set_halign(Align::Center);
         icon.set_valign(Align::Center);
         icon.set_hexpand(true);

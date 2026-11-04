@@ -27,8 +27,7 @@ pub fn build_info_grid(parent_vbox: &Box, target_paths: &[PathBuf]) {
 
         let icon_box = Box::new(Orientation::Vertical, 0);
         icon_box.set_css_classes(&["properties-icon-wrap"]);
-        let icon = babydra_ui_kit::ui::icon::get_file_icon(&name, is_dir);
-        icon.set_pixel_size(36);
+        let icon = crate::widgets::sidebar::icon::get_icon_for_path(path, is_dir, 36);
         icon.set_halign(Align::Center);
         icon.set_valign(Align::Center);
         icon_box.append(&icon);

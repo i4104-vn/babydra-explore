@@ -16,8 +16,7 @@ pub fn build_list_row_ui(entry: &FileEntry) -> Box {
     // Full name on hover — the visible label is ellipsized when too long
     item_box.set_tooltip_text(Some(&entry.display_name));
 
-    let img = babydra_ui_kit::ui::icon::get_fallback_icon(&entry.icon_name, "text-x-generic");
-    img.set_pixel_size(24);
+    let img = crate::widgets::sidebar::icon::get_file_entry_icon(entry, 24);
     item_box.append(&img);
 
     let lbl_name = Label::builder()

@@ -1,8 +1,10 @@
-//! Sidebar icon resolution:
+//! Sidebar and file icon resolution:
 //! 1. Prioritizes PNG icons from the current icon theme hierarchy.
 //! 2. Falls back to full-color theme icons (avoiding monochrome/symbolic icons).
-//! 3. If the theme does not have the icon, falls back to embedded SVG icons in `babydra-icons`.
+//! 3. Maps MIME types and file extensions to freedesktop theme icons (e.g. PDF -> application-pdf).
+//! 4. If the theme does not have the icon, falls back to embedded SVG icons in `babydra-icons`.
 
+use babydra_core::{FileEntry, FileType};
 use gdk4::Texture;
 use gdk_pixbuf::Pixbuf;
 use gio::prelude::*;
@@ -43,6 +45,36 @@ impl ThemeIconIndex {
         self.theme_name = theme_name.to_string();
         scan_theme_directories(theme_name, &mut self.png_icons, &mut self.svg_icons);
     }
+
+    fn resolve_candidates(&self, candidates: &[String]) -> Option<PathBuf> {
+        // Priority 1: Check PNG icons across candidates
+        let mut best_png: Option<(i32, PathBuf)> = None;
+        for cand in candidates {
+            if let Some((score, path)) = self.png_icons.get(cand) {
+                if best_png.as_ref().map(|b| *score > b.0).unwrap_or(true) {
+                    best_png = Some((*score, path.clone()));
+                }
+            }
+        }
+        if let Some((_, path)) = best_png {
+            return Some(path);
+        }
+
+        // Priority 2: Check full-color SVG icons (score > 0, avoiding symbolic)
+        let mut best_svg: Option<(i32, PathBuf)> = None;
+        for cand in candidates {
+            if let Some((score, path)) = self.svg_icons.get(cand) {
+                if *score > 0 && best_svg.as_ref().map(|b| *score > b.0).unwrap_or(true) {
+                    best_svg = Some((*score, path.clone()));
+                }
+            }
+        }
+        if let Some((_, path)) = best_svg {
+            return Some(path);
+        }
+
+        None
+    }
 }
 
 /// Clears the cached theme icon paths (e.g. when icon theme changes).
@@ -75,41 +107,36 @@ fn get_active_theme_name() -> String {
 fn get_search_roots() -> Vec<PathBuf> {
     let home = glib::home_dir();
     let mut roots = Vec::new();
-    let user_local = home.join(".local/share/icons");
-    if user_local.is_dir() {
-        roots.push(user_local);
-    }
-    let user_icons = home.join(".icons");
-    if user_icons.is_dir() {
-        roots.push(user_icons);
-    }
-    let sys_local = PathBuf::from("/usr/local/share/icons");
-    if sys_local.is_dir() {
-        roots.push(sys_local);
-    }
-    let sys_icons = PathBuf::from("/usr/share/icons");
-    if sys_icons.is_dir() {
-        roots.push(sys_icons);
+    for p in &[
+        home.join(".local/share/icons"),
+        home.join(".icons"),
+        PathBuf::from("/usr/local/share/icons"),
+        PathBuf::from("/usr/share/icons"),
+    ] {
+        if p.is_dir() {
+            roots.push(p.clone());
+        }
     }
     roots
 }
 
-/// Scores a PNG path based on its resolution / directory name.
-/// Prefer resolutions around 32-64px for clean scaling down to 22-26px.
-fn score_png_path(path: &Path) -> i32 {
-    let s = path.to_string_lossy().to_lowercase();
-    if s.contains("symbolic") {
-        return -100;
-    }
-    if s.contains("48") || s.contains("48x48") {
-        60
+/// Scores icon size and resolution quality.
+fn score_size(s: &str, is_svg: bool) -> i32 {
+    if is_svg && s.contains("scalable") {
+        100
     } else if s.contains("64") || s.contains("64x64") {
-        55
+        80
+    } else if s.contains("48") || s.contains("48x48") {
+        70
     } else if s.contains("32") || s.contains("32x32") {
-        50
+        60
     } else if s.contains("24") || s.contains("24x24") || s.contains("22") || s.contains("22x22") {
-        45
-    } else if s.contains("scalable") || s.contains("128") || s.contains("256") {
+        if s.contains("mime") || s.contains("app") || s.contains("place") {
+            45
+        } else {
+            15
+        }
+    } else if s.contains("scalable") || s.contains("128") || s.contains("256") || s.contains("512") {
         35
     } else if s.contains("16") || s.contains("16x16") {
         15
@@ -118,32 +145,25 @@ fn score_png_path(path: &Path) -> i32 {
     }
 }
 
-/// Scores an SVG path to prioritize full-color, scalable artwork over small monochrome line icons.
-fn score_svg_path(path: &Path) -> i32 {
+/// Unified scoring function for PNG and SVG paths.
+fn score_icon_path(path: &Path, is_svg: bool) -> i32 {
     let s = path.to_string_lossy().to_lowercase();
     if s.contains("symbolic") {
         return -100;
     }
-    if s.contains("scalable") {
-        100
-    } else if s.contains("64") || s.contains("64x64") {
-        80
-    } else if s.contains("48") || s.contains("48x48") {
-        70
-    } else if s.contains("32") || s.contains("32x32") {
-        60
-    } else if s.contains("24")
-        || s.contains("24x24")
-        || s.contains("22")
-        || s.contains("22x22")
-        || s.contains("16")
-        || s.contains("16x16")
-    {
-        // 16/22/24 directories in many themes contain monochrome single-color icons
-        5
-    } else {
-        30
+    let mut score = score_size(&s, is_svg);
+    if s.contains("mime") || s.contains("mimetypes") {
+        score += 15;
     }
+    score
+}
+
+fn score_png_path(path: &Path) -> i32 {
+    score_icon_path(path, false)
+}
+
+fn score_svg_path(path: &Path) -> i32 {
+    score_icon_path(path, true)
 }
 
 /// Scans theme directories to populate available PNG and SVG icons.
@@ -260,145 +280,420 @@ fn scan_theme_directories(
     }
 }
 
+/// Static alias table for common named icons.
+fn get_name_aliases(name: &str) -> &'static [&'static str] {
+    match name {
+        "folder-download" => &[
+            "folder-downloads",
+            "folder_download",
+            "folder_downloads",
+            "download-folder",
+            "folder-download-open",
+            "download",
+        ],
+        "folder-documents" => &[
+            "folder-document",
+            "folders-documents",
+            "folder_documents",
+            "folder_document",
+            "document-folder",
+            "folder-documents-open",
+            "documents",
+        ],
+        "folder-pictures" => &[
+            "folder-picture",
+            "folders-pictures",
+            "folder_pictures",
+            "folder_picture",
+            "folder-images",
+            "folder-pictures-open",
+            "pictures",
+        ],
+        "folder-music" => &[
+            "folder_music",
+            "folders-music",
+            "music-folder",
+            "folder-music-open",
+            "music",
+        ],
+        "folder-desktop" => &[
+            "user-desktop",
+            "desktop",
+            "user-home",
+            "folder_color_default_desktop",
+            "default-user-desktop",
+        ],
+        "folder-videos" => &[
+            "folder-video",
+            "folders-videos",
+            "folder_videos",
+            "video-folder",
+            "folder-videos-open",
+            "videos",
+        ],
+        "drive-harddisk" => &[
+            "drive-harddisk-system",
+            "drive-harddisk-root",
+            "harddisk",
+            "drive",
+            "disks",
+        ],
+        "user-trash" | "trash" => &[
+            "user-trash",
+            "trashcan_empty",
+            "trash-empty",
+            "user-trash-full",
+            "emptytrash",
+            "trash",
+        ],
+        "drive-removable-media" => &[
+            "media-removable",
+            "drive-removable",
+            "media-flash",
+            "usb-drive",
+        ],
+        "babydra-explore" => &[
+            "system-file-manager",
+            "file-manager",
+            "org.babydra.explore",
+            "babydra",
+        ],
+        "folder" => &[
+            "folder_color_default",
+            "stock_folder",
+            "default-folder",
+            "inode-directory",
+        ],
+        "document-pdf" | "application-pdf" | "pdf" | "gnome-mime-application-pdf" | "x-pdf" => &[
+            "application-pdf",
+            "pdf",
+            "gnome-mime-application-pdf",
+            "document-pdf",
+            "application-x-pdf",
+            "x-office-document",
+        ],
+        "package-x-generic"
+        | "application-zip"
+        | "application-x-archive"
+        | "application-x-tar" => &[
+            "package-x-generic",
+            "application-zip",
+            "application-x-archive",
+            "application-x-tar",
+            "application-x-7z-compressed",
+            "application-x-rar",
+            "application-x-compressed",
+            "archive",
+            "zip",
+        ],
+        "application-x-executable" | "system-run" | "application-x-ms-dos-executable" => &[
+            "application-x-executable",
+            "application-x-ms-dos-executable",
+            "system-run",
+            "application-default-icon",
+        ],
+        "image-x-generic" => &["image-x-generic", "image", "image-jpeg", "image-png"],
+        "video-x-generic" => &["video-x-generic", "video", "video-mp4", "video-x-matroska"],
+        "audio-x-generic" => &["audio-x-generic", "audio", "sound", "audio-mp3"],
+        "text-x-generic" => &["text-x-generic", "text-plain", "text-x-preview"],
+        "text-x-script" => &["text-x-script", "application-x-shellscript", "text-x-generic"],
+        "x-office-document" => &[
+            "x-office-document",
+            "application-vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application-msword",
+            "document",
+        ],
+        "x-office-spreadsheet" => &[
+            "x-office-spreadsheet",
+            "application-vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application-vnd.ms-excel",
+        ],
+        "x-office-presentation" => &[
+            "x-office-presentation",
+            "application-vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application-vnd.ms-powerpoint",
+        ],
+        _ => &[],
+    }
+}
+
+/// Static alias table for file extensions to icon theme candidates.
+fn get_extension_aliases(ext: &str) -> &'static [&'static str] {
+    match ext {
+        "pdf" => &[
+            "application-pdf",
+            "pdf",
+            "gnome-mime-application-pdf",
+            "document-pdf",
+            "application-x-pdf",
+            "x-office-document",
+        ],
+        "doc" | "docx" | "docm" | "dot" | "dotx" | "odt" | "rtf" | "wps" => &[
+            "application-vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application-msword",
+            "x-office-document",
+            "application-vnd.oasis.opendocument.text",
+            "libreoffice-writer",
+            "wps-office-wps",
+            "word",
+            "document-word",
+        ],
+        "xls" | "xlsx" | "xlsm" | "xlt" | "xltx" | "ods" | "csv" | "tsv" | "et" => &[
+            "application-vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application-vnd.ms-excel",
+            "x-office-spreadsheet",
+            "application-vnd.oasis.opendocument.spreadsheet",
+            "text-csv",
+            "libreoffice-calc",
+            "wps-office-et",
+            "excel",
+            "document-excel",
+        ],
+        "ppt" | "pptx" | "pptm" | "pot" | "potx" | "odp" | "dps" => &[
+            "application-vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application-vnd.ms-powerpoint",
+            "x-office-presentation",
+            "application-vnd.oasis.opendocument.presentation",
+            "libreoffice-impress",
+            "wps-office-dpp",
+            "powerpoint",
+            "document-powerpoint",
+        ],
+        "zip" | "tar" | "gz" | "bz2" | "xz" | "7z" | "rar" | "tgz" | "tbz2" | "zst"
+        | "lz4" | "cab" => &[
+            "application-zip",
+            "package-x-generic",
+            "application-x-archive",
+            "application-x-tar",
+            "application-x-7z-compressed",
+            "application-x-rar",
+            "application-x-compressed",
+            "archive",
+            "zip",
+        ],
+        "deb" => &[
+            "application-vnd.debian.binary-package",
+            "package-x-generic",
+            "deb",
+        ],
+        "rpm" => &["application-x-rpm", "package-x-generic", "rpm"],
+        "apk" => &[
+            "application-vnd.android.package-archive",
+            "package-x-generic",
+            "apk",
+        ],
+        "iso" | "img" | "raw" | "dmg" => &[
+            "application-x-cd-image",
+            "application-x-raw-disk-image",
+            "media-optical",
+            "iso",
+        ],
+        "exe" | "msi" => &[
+            "application-x-ms-dos-executable",
+            "application-x-executable",
+            "system-run",
+            "exe",
+        ],
+        "sh" | "bash" | "zsh" | "fish" | "bat" | "cmd" => &[
+            "application-x-shellscript",
+            "text-x-script",
+            "application-x-executable",
+        ],
+        "py" | "pyw" => &[
+            "text-x-python",
+            "text-x-python3",
+            "text-x-script",
+            "python",
+        ],
+        "rs" => &["text-x-rust", "text-rust", "text-x-generic"],
+        "c" | "h" => &["text-x-c", "text-x-chdr", "text-x-csrc", "text-x-generic"],
+        "cpp" | "cxx" | "cc" | "hpp" => &[
+            "text-x-c++",
+            "text-x-c++hdr",
+            "text-x-c++src",
+            "text-x-generic",
+        ],
+        "js" | "mjs" | "cjs" => &[
+            "text-javascript",
+            "application-javascript",
+            "text-x-javascript",
+        ],
+        "ts" | "tsx" => &[
+            "text-typescript",
+            "application-typescript",
+            "text-x-typescript",
+        ],
+        "html" | "htm" => &["text-html", "text-x-generic"],
+        "css" | "scss" | "sass" | "less" => &["text-css", "text-x-generic"],
+        "json" => &["application-json", "text-x-generic"],
+        "xml" => &["application-xml", "text-xml", "text-x-generic"],
+        "yaml" | "yml" => &["application-x-yaml", "text-yaml", "text-x-generic"],
+        "toml" | "ini" | "conf" | "cfg" => &["text-x-generic", "text-plain"],
+        "txt" | "log" => &["text-plain", "text-x-generic"],
+        "md" | "markdown" => &[
+            "text-markdown",
+            "text-x-markdown",
+            "text-plain",
+            "text-x-generic",
+        ],
+        "mp3" => &["audio-mp3", "audio-x-generic", "audio", "sound"],
+        "flac" | "wav" | "ogg" | "m4a" | "aac" | "opus" | "wma" | "mid" | "midi" => {
+            &["audio-x-generic", "audio", "sound"]
+        }
+        "mp4" | "mkv" | "avi" | "mov" | "wmv" | "flv" | "webm" | "m4v" => {
+            &["video-x-generic", "video", "video-mp4"]
+        }
+        "png" | "jpg" | "jpeg" | "gif" | "webp" | "bmp" | "svg" | "tiff" | "ico"
+        | "avif" | "heic" => &["image-x-generic", "image"],
+        "ttf" | "otf" | "woff" | "woff2" => &[
+            "font-x-generic",
+            "application-x-font-ttf",
+            "application-x-font-otf",
+        ],
+        _ => &[],
+    }
+}
+
 /// Returns candidates/aliases for the given icon name.
 fn get_candidates(name: &str) -> Vec<String> {
     let clean = name.strip_suffix("-symbolic").unwrap_or(name);
     let mut list = Vec::new();
     list.push(clean.to_string());
-
-    match clean {
-        "folder-download" => {
-            for a in &[
-                "folder-downloads",
-                "folder_download",
-                "folder_downloads",
-                "download-folder",
-                "folder-download-open",
-                "download",
-            ] {
-                list.push(a.to_string());
-            }
-        }
-        "folder-documents" => {
-            for a in &[
-                "folder-document",
-                "folders-documents",
-                "folder_documents",
-                "folder_document",
-                "document-folder",
-                "folder-documents-open",
-                "documents",
-            ] {
-                list.push(a.to_string());
-            }
-        }
-        "folder-pictures" => {
-            for a in &[
-                "folder-picture",
-                "folders-pictures",
-                "folder_pictures",
-                "folder_picture",
-                "folder-images",
-                "folder-pictures-open",
-                "pictures",
-            ] {
-                list.push(a.to_string());
-            }
-        }
-        "folder-music" => {
-            for a in &[
-                "folder_music",
-                "folders-music",
-                "music-folder",
-                "folder-music-open",
-                "music",
-            ] {
-                list.push(a.to_string());
-            }
-        }
-        "folder-desktop" => {
-            for a in &[
-                "user-desktop",
-                "desktop",
-                "user-home",
-                "folder_color_default_desktop",
-                "default-user-desktop",
-            ] {
-                list.push(a.to_string());
-            }
-        }
-        "folder-videos" => {
-            for a in &[
-                "folder-video",
-                "folders-videos",
-                "folder_videos",
-                "video-folder",
-                "folder-videos-open",
-                "videos",
-            ] {
-                list.push(a.to_string());
-            }
-        }
-        "drive-harddisk" => {
-            for a in &[
-                "drive-harddisk-system",
-                "drive-harddisk-root",
-                "harddisk",
-                "drive",
-                "disks",
-            ] {
-                list.push(a.to_string());
-            }
-        }
-        "user-trash" | "trash" => {
-            for a in &[
-                "user-trash",
-                "trashcan_empty",
-                "trash-empty",
-                "user-trash-full",
-                "emptytrash",
-                "trash",
-            ] {
-                list.push(a.to_string());
-            }
-        }
-        "drive-removable-media" => {
-            for a in &[
-                "media-removable",
-                "drive-removable",
-                "media-flash",
-                "usb-drive",
-            ] {
-                list.push(a.to_string());
-            }
-        }
-        "babydra-explore" => {
-            for a in &[
-                "system-file-manager",
-                "file-manager",
-                "org.babydra.explore",
-                "babydra",
-            ] {
-                list.push(a.to_string());
-            }
-        }
-        "folder" => {
-            for a in &[
-                "folder_color_default",
-                "stock_folder",
-                "default-folder",
-            ] {
-                list.push(a.to_string());
-            }
-        }
-        _ => {}
+    for alias in get_name_aliases(clean) {
+        list.push(alias.to_string());
     }
-
     list
 }
 
-/// Resolves an icon to a theme file path.
-/// Prioritizes PNG icons first, then full-color SVG icons.
+/// Generates ordered candidate icon names for a file or directory based on its extension,
+/// MIME type, GIO content type, and given icon_name.
+pub fn get_file_candidates(
+    path: Option<&Path>,
+    name: &str,
+    is_dir: bool,
+    mime_type: Option<&str>,
+    icon_name: Option<&str>,
+) -> Vec<String> {
+    let mut list = Vec::new();
+    let mut seen = HashSet::new();
+
+    let mut add = |item: &str| {
+        let clean = item.trim().strip_suffix("-symbolic").unwrap_or(item.trim());
+        if !clean.is_empty() && seen.insert(clean.to_string()) {
+            list.push(clean.to_string());
+        }
+    };
+
+    if is_dir {
+        let lower = name.to_lowercase();
+        let folder_key = if lower.contains("download") || lower.contains("tải về") {
+            "folder-download"
+        } else if lower.contains("document") || lower.contains("tài liệu") {
+            "folder-documents"
+        } else if lower.contains("picture")
+            || lower.contains("photo")
+            || lower.contains("hình")
+            || lower.contains("ảnh")
+        {
+            "folder-pictures"
+        } else if lower.contains("music") || lower.contains("nhạc") {
+            "folder-music"
+        } else if lower.contains("video") || lower.contains("phim") {
+            "folder-videos"
+        } else if lower.contains("desktop") || lower.contains("bàn làm việc") {
+            "folder-desktop"
+        } else {
+            "folder"
+        };
+        for a in get_candidates(folder_key) {
+            add(&a);
+        }
+        for a in &[
+            "folder",
+            "folder_color_default",
+            "stock_folder",
+            "default-folder",
+            "inode-directory",
+        ] {
+            add(a);
+        }
+        return list;
+    }
+
+    // 1. Extension matching
+    let ext_opt = path
+        .and_then(|p| p.extension())
+        .and_then(|e| e.to_str())
+        .or_else(|| name.rfind('.').map(|i| &name[i + 1..]))
+        .map(|e| e.to_lowercase());
+
+    if let Some(ext) = ext_opt.as_deref() {
+        for a in get_extension_aliases(ext) {
+            add(a);
+        }
+    }
+
+    // 2. GIO content type lookup
+    let lookup_name = path
+        .map(|p| p.to_string_lossy())
+        .unwrap_or_else(|| std::borrow::Cow::Borrowed(name));
+    let (ct, _) = gio::content_type_guess(Some(lookup_name.as_ref()), &[]);
+    let icon = gio::content_type_get_icon(&ct);
+    if let Ok(themed) = icon.downcast::<gio::ThemedIcon>() {
+        for tname in themed.names() {
+            add(tname.as_str());
+        }
+    }
+    if let Some(gen_name) = gio::content_type_get_generic_icon_name(&ct) {
+        add(gen_name.as_str());
+    }
+
+    // 3. MIME type conversion
+    if let Some(m) = mime_type {
+        if let Some(slash_idx) = m.find('/') {
+            let dashed = format!("{}-{}", &m[..slash_idx], &m[slash_idx + 1..]);
+            add(&dashed);
+        }
+        add(m);
+    }
+
+    // 4. Input icon_name aliases
+    if let Some(in_name) = icon_name {
+        for a in get_candidates(in_name) {
+            add(&a);
+        }
+    }
+
+    // 5. Broad category fallbacks
+    if let Some(m) = mime_type {
+        if m.starts_with("image/") {
+            add("image-x-generic");
+        } else if m.starts_with("video/") {
+            add("video-x-generic");
+        } else if m.starts_with("audio/") {
+            add("audio-x-generic");
+        }
+    }
+
+    add("text-x-generic");
+    list
+}
+
+/// Resolves candidates across active icon theme hierarchy.
+pub fn resolve_candidates_to_path(candidates: &[String]) -> Option<PathBuf> {
+    THEME_ICON_INDEX.with(|idx_cell| {
+        let mut idx = idx_cell.borrow_mut();
+        let current_theme = get_active_theme_name();
+
+        if idx.theme_name != current_theme {
+            idx.populate(&current_theme);
+        }
+
+        idx.resolve_candidates(candidates)
+    })
+}
+
+/// Resolves an icon name to a theme file path.
 fn resolve_theme_icon_path(name: &str) -> Option<PathBuf> {
     THEME_ICON_INDEX.with(|idx_cell| {
         let mut idx = idx_cell.borrow_mut();
@@ -413,39 +708,46 @@ fn resolve_theme_icon_path(name: &str) -> Option<PathBuf> {
         }
 
         let candidates = get_candidates(name);
+        let result = idx.resolve_candidates(&candidates);
+        idx.resolved_cache.insert(name.to_string(), result.clone());
+        result
+    })
+}
 
-        // 1. Priority 1: Check PNG icons across candidates
-        let mut best_png: Option<(i32, PathBuf)> = None;
-        for cand in &candidates {
-            if let Some((score, path)) = idx.png_icons.get(cand) {
-                if best_png.as_ref().map(|b| *score > b.0).unwrap_or(true) {
-                    best_png = Some((*score, path.clone()));
-                }
-            }
+/// Resolves a file entry to an icon file path in the current icon theme with caching.
+pub fn resolve_file_entry_path(entry: &FileEntry) -> Option<PathBuf> {
+    let cache_key = if matches!(entry.file_type, FileType::Directory) {
+        format!("dir:{}", entry.display_name.to_lowercase())
+    } else if let Some(ext) = entry.path.extension().and_then(|e| e.to_str()) {
+        format!("ext:{}:{}", ext.to_lowercase(), entry.icon_name)
+    } else {
+        format!("file:{}:{}", entry.mime_type, entry.icon_name)
+    };
+
+    THEME_ICON_INDEX.with(|idx_cell| {
+        let mut idx = idx_cell.borrow_mut();
+        let current_theme = get_active_theme_name();
+
+        if idx.theme_name != current_theme {
+            idx.populate(&current_theme);
         }
 
-        if let Some((_, path)) = best_png {
-            idx.resolved_cache.insert(name.to_string(), Some(path.clone()));
-            return Some(path);
+        if let Some(cached) = idx.resolved_cache.get(&cache_key) {
+            return cached.clone();
         }
 
-        // 2. Priority 2: Check full-color SVG icons (score >= 30, avoiding 16/22/24 line icons)
-        let mut best_svg: Option<(i32, PathBuf)> = None;
-        for cand in &candidates {
-            if let Some((score, path)) = idx.svg_icons.get(cand) {
-                if *score >= 30 && best_svg.as_ref().map(|b| *score > b.0).unwrap_or(true) {
-                    best_svg = Some((*score, path.clone()));
-                }
-            }
-        }
+        let is_dir = matches!(entry.file_type, FileType::Directory);
+        let candidates = get_file_candidates(
+            Some(&entry.path),
+            &entry.display_name,
+            is_dir,
+            Some(&entry.mime_type),
+            Some(&entry.icon_name),
+        );
 
-        if let Some((_, path)) = best_svg {
-            idx.resolved_cache.insert(name.to_string(), Some(path.clone()));
-            return Some(path);
-        }
-
-        idx.resolved_cache.insert(name.to_string(), None);
-        None
+        let result = idx.resolve_candidates(&candidates);
+        idx.resolved_cache.insert(cache_key, result.clone());
+        result
     })
 }
 
@@ -463,12 +765,35 @@ fn load_image_from_file(path: &Path, size: i32) -> Option<gtk4::Image> {
     }
 }
 
+/// Helper that creates a GTK Image from resolved path, or fallback to GTK IconTheme / embedded SVG.
+fn create_image_from_resolution(
+    resolved_path: Option<&Path>,
+    candidates: &[String],
+    fallback_icon: &str,
+    size: i32,
+) -> gtk4::Image {
+    if let Some(path) = resolved_path {
+        if let Some(img) = load_image_from_file(path, size) {
+            return img;
+        }
+    }
+    if let Some(disp) = gdk4::Display::default() {
+        let theme = gtk4::IconTheme::for_display(&disp);
+        for cand in candidates {
+            if theme.has_icon(cand) {
+                let img = gtk4::Image::from_icon_name(cand);
+                img.set_pixel_size(size);
+                return img;
+            }
+        }
+    }
+    let img = babydra_ui_kit::ui::icon::get_fallback_icon(fallback_icon, "text-x-generic");
+    img.set_pixel_size(size);
+    img
+}
+
 /// Creates a sidebar icon widget.
-/// - Checks if `icon_name` is an existing file path.
-/// - Searches the icon theme hierarchy for a matching PNG image (or color SVG).
-/// - If not found in themes, falls back to the embedded SVG in `babydra-icons`.
 pub fn get_sidebar_icon(icon_name: &str, size: i32) -> gtk4::Image {
-    // 1. Direct file path
     if (icon_name.starts_with('/') || icon_name.starts_with('.'))
         && Path::new(icon_name).is_file()
     {
@@ -477,15 +802,88 @@ pub fn get_sidebar_icon(icon_name: &str, size: i32) -> gtk4::Image {
         }
     }
 
-    // 2. Search theme hierarchy for PNG or full-color icon
-    if let Some(path) = resolve_theme_icon_path(icon_name) {
-        if let Some(img) = load_image_from_file(&path, size) {
-            return img;
+    let candidates = get_candidates(icon_name);
+    let resolved = resolve_theme_icon_path(icon_name);
+    create_image_from_resolution(resolved.as_deref(), &candidates, icon_name, size)
+}
+
+/// Returns a GTK Image for a `FileEntry`.
+pub fn get_file_entry_icon(entry: &FileEntry, size: i32) -> gtk4::Image {
+    let resolved = resolve_file_entry_path(entry);
+    let is_dir = matches!(entry.file_type, FileType::Directory);
+    let candidates = get_file_candidates(
+        Some(&entry.path),
+        &entry.display_name,
+        is_dir,
+        Some(&entry.mime_type),
+        Some(&entry.icon_name),
+    );
+    create_image_from_resolution(resolved.as_deref(), &candidates, &entry.icon_name, size)
+}
+
+/// Sets the image source for an existing GTK Image widget for a `FileEntry`.
+pub fn set_file_entry_icon(img: &gtk4::Image, entry: &FileEntry, size: i32) {
+    if let Some(path) = resolve_file_entry_path(entry) {
+        if let Ok(pixbuf) = Pixbuf::from_file_at_scale(&path, size, size, true) {
+            let texture = Texture::for_pixbuf(&pixbuf);
+            img.set_icon_name(None);
+            img.set_paintable(Some(&texture));
+            img.set_pixel_size(size);
+            return;
+        } else {
+            img.set_icon_name(None);
+            img.set_from_file(Some(path.to_string_lossy().as_ref()));
+            img.set_pixel_size(size);
+            return;
         }
     }
 
-    // 3. Fallback to embedded SVG from babydra-icons
-    babydra_ui_kit::ui::icon::get_icon(icon_name, size)
+    img.set_paintable(gtk4::gdk::Paintable::NONE);
+    let is_dir = matches!(entry.file_type, FileType::Directory);
+    let candidates = get_file_candidates(
+        Some(&entry.path),
+        &entry.display_name,
+        is_dir,
+        Some(&entry.mime_type),
+        Some(&entry.icon_name),
+    );
+
+    if let Some(disp) = gdk4::Display::default() {
+        let theme = gtk4::IconTheme::for_display(&disp);
+        for cand in &candidates {
+            if theme.has_icon(cand) {
+                img.set_icon_name(Some(cand));
+                img.set_pixel_size(size);
+                return;
+            }
+        }
+    }
+
+    babydra_ui_kit::ui::icon::set_fallback_icon(img, &entry.icon_name, "text-x-generic");
+    img.set_pixel_size(size);
+}
+
+/// Resolves an icon for a file or directory path (used e.g. in Properties dialog).
+pub fn get_icon_for_path(path: &Path, is_dir: bool, size: i32) -> gtk4::Image {
+    let filename = path.file_name().unwrap_or_default().to_string_lossy();
+    let candidates = get_file_candidates(Some(path), &filename, is_dir, None, None);
+    let resolved = resolve_candidates_to_path(&candidates);
+    let fallback = if is_dir { "folder" } else { "text-x-generic" };
+    create_image_from_resolution(resolved.as_deref(), &candidates, fallback, size)
+}
+
+/// Resolves a Texture paintable for drag-and-drop icon or thumbnail representation.
+pub fn get_icon_paintable(icon_name: &str, file_path: &Path, size: i32) -> Option<Texture> {
+    let is_dir = file_path.is_dir();
+    let filename = file_path.file_name().unwrap_or_default().to_string_lossy();
+    let candidates =
+        get_file_candidates(Some(file_path), &filename, is_dir, None, Some(icon_name));
+    if let Some(icon_path) = resolve_candidates_to_path(&candidates) {
+        if let Ok(pixbuf) = Pixbuf::from_file_at_scale(&icon_path, size, size, true) {
+            return Some(Texture::for_pixbuf(&pixbuf));
+        }
+    }
+    None
 }
 
 #[cfg(test)]
@@ -505,6 +903,23 @@ mod tests {
         let trash = get_candidates("user-trash");
         assert!(trash.contains(&"trash".to_string()));
         assert!(trash.contains(&"trashcan_empty".to_string()));
+
+        let pdf = get_candidates("document-pdf");
+        assert!(pdf.contains(&"application-pdf".to_string()));
+        assert!(pdf.contains(&"pdf".to_string()));
+    }
+
+    #[test]
+    fn test_file_candidates_pdf() {
+        let cands = get_file_candidates(
+            Some(Path::new("/tmp/3000.pdf")),
+            "3000.pdf",
+            false,
+            Some("application/pdf"),
+            Some("document-pdf"),
+        );
+        assert!(cands.contains(&"application-pdf".to_string()));
+        assert!(cands.contains(&"pdf".to_string()));
     }
 
     #[test]
@@ -513,11 +928,14 @@ mod tests {
         let png_16 = score_png_path(Path::new("/usr/share/icons/theme/16x16/places/folder.png"));
         assert!(png_48 > png_16);
 
-        let svg_scalable = score_svg_path(Path::new("/usr/share/icons/theme/places/scalable/folder.svg"));
+        let svg_scalable =
+            score_svg_path(Path::new("/usr/share/icons/theme/places/scalable/folder.svg"));
         let svg_22 = score_svg_path(Path::new("/usr/share/icons/theme/places/22/folder.svg"));
         assert!(svg_scalable > svg_22);
 
-        let svg_symbolic = score_svg_path(Path::new("/usr/share/icons/theme/places/symbolic/folder-symbolic.svg"));
+        let svg_symbolic = score_svg_path(Path::new(
+            "/usr/share/icons/theme/places/symbolic/folder-symbolic.svg",
+        ));
         assert_eq!(svg_symbolic, -100);
     }
 }
