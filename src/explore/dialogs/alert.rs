@@ -3,6 +3,7 @@ use gtk4::prelude::*;
 use super::shell::DialogShell;
 
 /// Presents a simple error/alert modal dialog with a Close/OK button.
+#[allow(dead_code)]
 pub fn show_alert_dialog(title: &str, message: &str, parent: Option<&impl IsA<gtk4::Window>>) {
     let shell = DialogShell::new(title, 380, 160, 12, parent);
     shell.add_header(

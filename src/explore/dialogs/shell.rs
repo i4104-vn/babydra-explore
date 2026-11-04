@@ -6,6 +6,7 @@ use gtk4::prelude::*;
 use gtk4::{Align, Box, Button, Entry, Label, Orientation, Window};
 
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 pub enum BadgeStyle {
     Primary,
     Danger,
@@ -137,6 +138,7 @@ impl DialogShell {
     }
 
     /// Appends a left-aligned text label.
+    #[allow(dead_code)]
     pub fn add_label(&self, text: &str) -> Label {
         let lbl = Label::builder()
             .label(text)

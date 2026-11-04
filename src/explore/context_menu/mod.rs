@@ -1,3 +1,5 @@
+#![allow(unused_imports, dead_code)]
+
 pub mod clipboard;
 pub mod custom_items;
 pub mod dimming;
