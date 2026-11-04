@@ -71,7 +71,7 @@ pub fn wire_grid_ctrls(
                         if matches!(entry.file_type, babydra_core::FileType::Directory) {
                             nav(entry.path.clone());
                         } else {
-                            babydra_ui_kit::components::explore::launch_file_or_open_with(
+                            crate::explore::launch_file_or_open_with(
                                 &entry.path,
                                 None::<&gtk4::Window>,
                             );

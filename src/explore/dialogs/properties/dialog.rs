@@ -1,0 +1,94 @@
+use gtk4::prelude::*;
+use gtk4::{Align, Box, Button, Orientation, Window};
+use std::os::unix::fs::MetadataExt;
+use std::path::PathBuf;
+
+use super::helpers::count_dialog_height;
+use super::info_grid::build_info_grid;
+use super::permissions::{apply_permissions, build_perm_matrix};
+use babydra_core::i18n::trans;
+
+/// Show properties dialog.
+pub fn show_properties(target_paths: Vec<PathBuf>, parent: Option<&impl IsA<gtk4::Window>>) {
+    if target_paths.is_empty() {
+        return;
+    }
+
+    let dialog_height = count_dialog_height(&target_paths);
+
+    let window = Window::builder()
+        .title(trans("explore.dialog_properties_title"))
+        .icon_name("babydra")
+        .modal(true)
+        .resizable(false)
+        .default_width(400)
+        .default_height(dialog_height)
+        .css_classes(vec![
+            "explore-dialog".to_string(),
+            "properties-dialog".to_string(),
+        ])
+        .build();
+
+    if let Some(p) = parent {
+        window.set_transient_for(Some(p));
+    }
+
+    let vbox = Box::new(Orientation::Vertical, 12);
+    vbox.add_css_class("explore-dialog-box");
+    vbox.set_margin_top(16);
+    vbox.set_margin_bottom(16);
+    vbox.set_margin_start(16);
+    vbox.set_margin_end(16);
+    window.set_child(Some(&vbox));
+
+    build_info_grid(&vbox, &target_paths);
+
+    // Build Permissions Card if exactly 1 path selected
+    let mut checkboxes = None;
+    if target_paths.len() == 1 {
+        let path = &target_paths[0];
+        if let Ok(meta) = std::fs::metadata(path) {
+            let mode = meta.mode();
+            checkboxes = Some(build_perm_matrix(&vbox, mode));
+        }
+    }
+
+    // Action Buttons Footer
+    let bbox = Box::new(Orientation::Horizontal, 10);
+    bbox.set_halign(Align::End);
+    bbox.set_margin_top(4);
+    vbox.append(&bbox);
+
+    let btn_cancel = Button::with_label(&trans("explore.settings_cancel"));
+    btn_cancel.add_css_class("modern-dialog-cancel-btn");
+    btn_cancel.set_cursor_from_name(Some("pointer"));
+    bbox.append(&btn_cancel);
+
+    let win_cancel_btn = window.clone();
+    btn_cancel.connect_clicked(move |_| {
+        win_cancel_btn.close();
+    });
+
+    if target_paths.len() == 1 {
+        let btn_save = Button::builder()
+            .label(trans("explore.settings_save"))
+            .css_classes(vec![
+                "suggested-action".to_string(),
+                "modern-dialog-primary-btn".to_string(),
+            ])
+            .build();
+        btn_save.set_cursor_from_name(Some("pointer"));
+        bbox.append(&btn_save);
+
+        let path = target_paths[0].clone();
+        let win_save = window.clone();
+        btn_save.connect_clicked(move |_| {
+            if let Some(ref chks) = checkboxes {
+                apply_permissions(&path, chks);
+            }
+            win_save.close();
+        });
+    }
+
+    window.present();
+}

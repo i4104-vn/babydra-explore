@@ -18,7 +18,8 @@ pub fn create_sidebar(
     session: Rc<RefCell<SessionState>>,
     nav_callback: impl Fn(PathBuf) + 'static,
 ) -> gtk4::Box {
-    let (sidebar_box, scroll, nav_container, footer_box) = render::build_sidebar_ui();
+    let (sidebar_box, sidebar_header, scroll, nav_container, footer_box) =
+        render::build_sidebar_ui();
     let nav_cb = Rc::new(nav_callback) as Rc<dyn Fn(PathBuf)>;
 
     let nav_container_c = nav_container.clone();
@@ -134,7 +135,7 @@ pub fn create_sidebar(
     top_box.append(&logo_btn);
     top_box.append(&top_drop_bar);
     top_box.append(&profile_sep);
-    sidebar_box.prepend(&top_box);
+    sidebar_header.append(&top_box);
 
     let current_drag_id_c = current_drag_id.clone();
     let top_drop_bar_c = top_drop_bar.clone();

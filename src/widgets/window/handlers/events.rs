@@ -202,7 +202,7 @@ pub fn setup_status_wiring(args: StatusWiringArgs) {
         let act_trash = act_c.clone();
         sw.btn_empty_trash.connect_clicked(move |_| {
             let freed = babydra_core::remove_trash();
-            let size_str = babydra_ui_kit::components::explore::format_size(freed);
+            let size_str = crate::explore::format_size(freed);
             let notif_title = babydra_core::i18n::trans("explore.trash");
             let notif_msg = format!(
                 "{}: {}",

@@ -32,7 +32,7 @@ pub fn build_content_view() -> ContentViewWidgets {
     flowbox.set_column_spacing(10);
 
     // Item drags must start DnD, not the FlowBox native rubberband
-    babydra_ui_kit::components::explore::disable_native_rubberband(&flowbox);
+    crate::explore::disable_native_rubberband(&flowbox);
 
     let grid_container = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     grid_container.set_valign(Align::Start);
@@ -82,8 +82,9 @@ pub fn build_content_view() -> ContentViewWidgets {
     list_scroll.set_child(Some(&list_overlay));
     stack.add_named(&list_scroll, Some("list"));
 
-    let pane_nav_row = Box::new(Orientation::Horizontal, 4);
-    pane_nav_row.set_css_classes(&["nav-bar"]);
+    let shared_header = babydra_ui_kit::components::HeaderBar::new("");
+    let pane_nav_row = shared_header.widget().clone();
+    pane_nav_row.add_css_class("nav-bar");
     pane_nav_row.set_margin_start(6);
     pane_nav_row.set_margin_end(6);
     pane_nav_row.set_margin_bottom(4);
@@ -133,10 +134,10 @@ pub fn build_content_view() -> ContentViewWidgets {
     btn_refresh.set_hexpand(false);
     btn_refresh.set_vexpand(false);
 
-    pane_nav_row.append(&btn_back);
-    pane_nav_row.append(&btn_forward);
-    pane_nav_row.append(&btn_up);
-    pane_nav_row.append(&btn_refresh);
+    shared_header.leading().append(&btn_back);
+    shared_header.leading().append(&btn_forward);
+    shared_header.leading().append(&btn_up);
+    shared_header.leading().append(&btn_refresh);
 
     let address_wrap = Box::new(Orientation::Horizontal, 0);
     address_wrap.set_css_classes(&["address-bar-wrap"]);
@@ -156,7 +157,7 @@ pub fn build_content_view() -> ContentViewWidgets {
     address_stack.add_named(&entry_address, Some("address"));
 
     address_wrap.append(&address_stack);
-    pane_nav_row.append(&address_wrap);
+    shared_header.content().append(&address_wrap);
 
     let search = Entry::builder()
         .placeholder_text(trans("explore.search_placeholder"))
@@ -165,7 +166,7 @@ pub fn build_content_view() -> ContentViewWidgets {
         .build();
     search.set_size_request(80, -1);
     search.set_hexpand(false);
-    pane_nav_row.append(&search);
+    shared_header.actions().append(&search);
 
     // Bottom progress bar for loading
     let progress_bar = gtk4::ProgressBar::builder()

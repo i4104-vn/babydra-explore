@@ -112,7 +112,7 @@ pub fn update_status_bar(
     total_size: u64,
     current_path: &std::path::Path,
 ) {
-    let size_str = babydra_ui_kit::components::explore::format_size(total_size);
+    let size_str = crate::explore::format_size(total_size);
     widgets.lbl_status.set_text(&format!(
         "{} {} | {}: {}",
         count,
@@ -121,6 +121,6 @@ pub fn update_status_bar(
         size_str
     ));
 
-    let is_trash = babydra_ui_kit::components::explore::is_in_trash(current_path);
+    let is_trash = crate::explore::is_in_trash(current_path);
     widgets.btn_empty_trash.set_visible(is_trash);
 }

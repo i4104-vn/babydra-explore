@@ -1,0 +1,418 @@
+
+.explore-dialog {
+    background-image: none;
+    border-radius: 0 0 16px 16px;
+}
+
+.explore-dialog .edit-btn image,
+.explore-dialog .destructive-action image {
+    -gtk-icon-size: 13px;
+}
+
+button.empty-trash-btn {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 8px;
+    padding: 4px 10px;
+    transition: background-color 150ms ease;
+}
+
+.settings-title-label {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: 0.01em;
+}
+
+.settings-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 6px;
+    margin-bottom: 3px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.settings-section-subtitle {
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 5px;
+    margin-bottom: 2px;
+}
+
+.settings-item-name {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.settings-item-command {
+    font-size: 12px;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+}
+
+.settings-listbox {
+    border-radius: 12px;
+}
+
+.settings-listbox row {
+    padding: 0;
+    min-height: 0;
+}
+
+.settings-listbox row:last-child {
+    border-bottom: none;
+}
+
+.settings-notebook {
+    background-color: transparent;
+    border: none;
+}
+
+.settings-notebook header tabs {
+    margin-bottom: 8px;
+}
+
+.settings-notebook header tabs tab {
+    padding: 6px 12px;
+    font-weight: 600;
+    border-radius: 6px 6px 0 0;
+}
+
+.placeholder-btn {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: all 120ms ease;
+}
+
+button.placeholder-btn {
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    transition: all 120ms ease;
+}
+
+.placeholder-btn-small {
+    font-size: 9px;
+    padding: 1px 4px;
+    border: none;
+    border-radius: 5px;
+}
+
+.inline-entry {
+    font-size: 14px;
+    padding: 5px 9px;
+    border-radius: 8px;
+}
+
+.small-btn {
+    font-size: 14px;
+    padding: 3px 8px;
+    min-height: 26px;
+}
+
+.edit-btn {
+    border-radius: 50%;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    transition: background-color 150ms ease;
+}
+
+button.destructive-action {
+    min-height: 28px;
+    min-width: 64px;
+    padding: 5px 16px;
+    border-radius: 9999px;
+    font-size: 14px;
+    font-weight: 600;
+    background-color: rgba(255, 255, 255, 0.08);
+    background-image: none;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-top: 1px solid rgba(255, 255, 255, 0.24);
+    color: rgba(255, 255, 255, 0.90);
+    box-shadow: none;
+    outline: none;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+button.destructive-action:hover,
+button.destructive-action:focus {
+    background-color: #ef4444;
+    border-color: #ef4444;
+    color: #ffffff;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35);
+}
+
+button.destructive-action:active {
+    background-color: #dc2626;
+    border-color: #dc2626;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+.settings-capsule-nav-vertical {
+    border-radius: 9999px;
+    padding: 6px 5px;
+}
+
+button.settings-pill {
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 9999px;
+    padding: 10px;
+    min-width: 22px;
+    min-height: 22px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 180ms ease, color 180ms ease;
+    transform: none;
+}
+
+button.settings-pill:hover {
+    border: none;
+    transform: none;
+}
+
+button.settings-pill.active-pill {
+    border: none;
+    transform: none;
+}
+
+button.settings-pill.active-pill:hover {
+    border: none;
+    transform: none;
+}
+
+/* `.settings-card` is owned by `apps/settings.css`; dialogs are more
+   compact, so scope the tighter padding/radius under the dialog root. */
+.explore-dialog .sidebar {
+    min-width: 68px;
+    width: 68px;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
+}
+
+.explore-dialog .sidebar-item {
+    border: none;
+    border-radius: 12px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.explore-dialog .explore-dialog-content-card {
+    border-radius: 14px;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+.explore-dialog .explore-dialog-content-card stack,
+.explore-dialog .explore-dialog-content-card stack scrolledwindow,
+.explore-dialog .explore-dialog-content-card overlay,
+.explore-dialog .explore-dialog-content-card overlay scrolledwindow {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.explore-dialog .settings-page-title {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.explore-dialog .settings-page-subtitle {
+    font-size: 13px;
+    font-weight: 400;
+}
+
+.settings-custom-item-row {
+    background: transparent;
+    border-radius: 0;
+    transition: background-color 120ms ease;
+}
+
+.settings-custom-item-row:first-child {
+    border-radius: 12px 12px 0 0;
+}
+
+.settings-custom-item-row:last-child {
+    border-bottom: none;
+    border-radius: 0 0 12px 12px;
+}
+
+.settings-custom-item-row:only-child {
+    border-radius: 12px;
+}
+
+.keybind-pill {
+    font-size: 9px;
+    font-weight: 600;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    border-radius: 6px;
+    padding: 3px 8px;
+    letter-spacing: 0.02em;
+}
+
+button.icon-select-btn {
+    border-radius: 9999px;
+    padding: 5px;
+    min-width: 30px;
+    min-height: 30px;
+    box-shadow: none;
+    transition: background-color 120ms ease;
+}
+
+button.icon-grid-item {
+    padding: 8px;
+    border-radius: 8px;
+    border: none;
+    box-shadow: none;
+    background-color: transparent;
+    transition: background-color 100ms ease;
+}
+
+entry.small-entry,
+entry.small-entry>text {
+    min-height: 28px;
+    padding: 2px 8px;
+    font-size: 14px;
+}
+
+button.row-action-btn {
+    border-radius: 9999px;
+    padding: 5px;
+    min-width: 30px;
+    min-height: 30px;
+    box-shadow: none;
+    border: none;
+    background-color: transparent;
+    transition: opacity 150ms ease, background-color 150ms ease;
+    opacity: 0.6;
+}
+
+button.row-action-btn:hover {
+    opacity: 1.0;
+}
+
+.explore-dialog.properties-dialog {
+    border-top: none;
+    border-radius: 0 0 16px 16px;
+    box-shadow: none;
+}
+
+.properties-header-card {
+    border-radius: 14px;
+    padding: 12px 14px;
+}
+
+.properties-icon-wrap {
+    border-radius: 12px;
+    padding: 8px;
+}
+
+.properties-title-label {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.properties-subtitle-badge {
+    font-size: 9px;
+    font-weight: 500;
+    border-radius: 6px;
+    padding: 3px 8px;
+}
+
+.properties-card {
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.properties-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    margin-bottom: 4px;
+}
+
+.properties-row {
+    padding: 4px 0;
+}
+
+.properties-key-label {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.properties-val-label {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.properties-perm-badge {
+    font-size: 9px;
+    font-weight: 600;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    border-radius: 6px;
+    padding: 3px 8px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.properties-matrix-col-title {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+button.properties-btn-cancel {
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 150ms ease;
+}
+
+.open-with-dialog {
+    min-width: 380px;
+}
+
+.open-with-scrolled {
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.open-with-list {
+    background-color: transparent;
+}
+
+.open-with-row {
+    border-radius: 6px;
+    margin: 2px 4px;
+    padding: 2px;
+    transition: background-color 120ms ease;
+}
+
+.open-with-row:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.open-with-row:selected {
+    background-color: rgba(59, 130, 246, 0.25);
+}
+
+.app-name {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.app-exec {
+    font-size: 12px;
+    opacity: 0.65;
+}

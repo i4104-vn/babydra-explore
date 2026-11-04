@@ -4,7 +4,7 @@
 //! only resolves the active pane's selection and refresh callbacks.
 
 use babydra_core::{ActivePane, SessionState};
-use babydra_ui_kit::components::explore::context_menu::clipboard::execute_undo;
+use crate::explore::context_menu::clipboard::execute_undo;
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;

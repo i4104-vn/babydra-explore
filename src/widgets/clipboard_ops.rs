@@ -2,10 +2,10 @@
 //! shortcuts, and item key controllers. This is the only place these flows are
 //! implemented; callers supply selections and refresh callbacks.
 
-use babydra_ui_kit::components::explore::context_menu::clipboard::{
+use crate::explore::context_menu::clipboard::{
     paste_from_clipboard, set_clipboard_files,
 };
-use babydra_ui_kit::components::explore::{apply_cut_everywhere, is_in_trash, CLIPBOARD};
+use crate::explore::{apply_cut_everywhere, is_in_trash, CLIPBOARD};
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -73,7 +73,7 @@ pub fn delete_paths(
         let paths_c = paths.clone();
         let current_path_c = current_path.clone();
         let nav_cb_c = nav_cb.clone();
-        babydra_ui_kit::components::explore::show_delete_confirm(
+        crate::explore::show_delete_confirm(
             &title,
             &message,
             move || {

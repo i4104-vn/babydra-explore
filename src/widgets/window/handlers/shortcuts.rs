@@ -8,7 +8,7 @@ pub struct KeyShortcut {
     pub callback: Rc<dyn Fn()>,
 }
 
-pub use babydra_core::parse_shortcut;
+pub use babydra_ui_kit::ui::keyboard::parse_shortcut;
 
 /// Registers a list of shortcuts to the window, returns the created controller.
 pub fn setup_key_shortcuts(
@@ -27,10 +27,10 @@ pub fn setup_key_shortcuts(
             }
         }
 
-        let clean_state = babydra_core::clean_modifiers(state);
+        let clean_state = babydra_ui_kit::ui::keyboard::clean_modifiers(state);
 
         for shortcut in &shortcuts {
-            if babydra_core::matches_key(keyval, clean_state, (shortcut.keyval, shortcut.modifiers))
+            if babydra_ui_kit::ui::keyboard::matches_key(keyval, clean_state, (shortcut.keyval, shortcut.modifiers))
             {
                 (shortcut.callback)();
                 return glib::Propagation::Stop;

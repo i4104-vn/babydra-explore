@@ -1,4 +1,6 @@
 pub mod widgets;
+mod explore;
+mod theme;
 
 use babydra_core::SessionState;
 use gtk4::prelude::*;
@@ -69,7 +71,7 @@ fn main() {
         .build();
 
     app.connect_activate(|app| {
-        let (target_dir, focus_item) = babydra_ui_kit::components::explore::parse_target_dir();
+        let (target_dir, focus_item) = crate::explore::parse_target_dir();
 
         let session = std::rc::Rc::new(std::cell::RefCell::new(SessionState::new(target_dir)));
         let main_window = crate::widgets::window::create_explore_win(app, session, focus_item);

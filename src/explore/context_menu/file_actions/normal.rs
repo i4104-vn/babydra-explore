@@ -1,0 +1,309 @@
+use babydra_ui_kit::components::context_menu::ContextMenuBuilder;
+use crate::explore::context_menu::{
+    clipboard::execute_paste, custom_items::append_custom_items, CLIPBOARD,
+};
+use crate::explore::helpers::is_archive_file;
+use gtk4::prelude::*;
+use std::path::PathBuf;
+use std::rc::Rc;
+
+use babydra_core::i18n::trans;
+
+/// Renders the standard context menu for files/directories outside the Trash.
+pub fn show_for_file_normal(
+    parent_widget: &gtk4::Widget,
+    x: f64,
+    y: f64,
+    target_paths: Vec<PathBuf>,
+    current_path: PathBuf,
+    nav_callback: Rc<dyn Fn(PathBuf)>,
+    parent: &gtk4::Window,
+) {
+    let mut builder = ContextMenuBuilder::new(parent_widget)
+        .at_coords(x, y)
+        .with_width(200);
+
+    let current_path_win = current_path.clone();
+    let target_paths_win = target_paths.clone();
+
+    // 1. Open
+    let is_any_dir = target_paths.iter().any(|p| p.is_dir());
+    let target_paths_open = target_paths.clone();
+    let nav = nav_callback.clone();
+    let parent_open = parent.clone();
+    builder = builder.item(
+        &trans("explore.menu_open"),
+        if is_any_dir { "folder" } else { "text" },
+        move || {
+            for path in &target_paths_open {
+                if path.is_dir() {
+                    nav(path.clone());
+                } else {
+                    crate::explore::dialogs::launch_file_or_open_with(
+                        path,
+                        Some(&parent_open),
+                    );
+                }
+            }
+        },
+    );
+
+    // 1.1. Open With... (for single non-directory file)
+    if !is_any_dir && target_paths.len() == 1 {
+        let path_to_open = target_paths[0].clone();
+        let parent_open_with = parent.clone();
+        builder = builder.item(
+            &trans("explore.menu_open_with"),
+            "external-link",
+            move || {
+                crate::explore::dialogs::show_open_with_dialog(
+                    &path_to_open,
+                    Some(&parent_open_with),
+                );
+            },
+        );
+    }
+
+    // 1.2. Set as Wallpaper (for single image or video file)
+    if target_paths.len() == 1 {
+        let p = &target_paths[0];
+        let is_live = babydra_core::wallpaper::is_live_wallpaper_file(p);
+        let is_static = babydra_core::wallpaper::is_static_wallpaper_file(p);
+
+        if is_live || is_static {
+            let path_c = target_paths[0].clone();
+            let label = if is_live {
+                trans("desktop.set_as_live_wallpaper")
+            } else {
+                trans("desktop.set_as_wallpaper")
+            };
+            builder = builder.item(&label, "folder-pictures", move || {
+                let mode = if babydra_core::wallpaper::is_live_wallpaper_file(&path_c) {
+                    babydra_core::wallpaper::WallpaperMode::Live
+                } else {
+                    babydra_core::wallpaper::WallpaperMode::Static
+                };
+                let _ = babydra_core::wallpaper::set_wallpaper_with_mode(&path_c, mode);
+            });
+        }
+    }
+
+    // 2. Open in New Window
+    builder = builder.item(
+        &trans("explore.menu_open_new_window"),
+        "external-link",
+        move || {
+            let path_to_open = if let Some(dir) = target_paths_win.iter().find(|p| p.is_dir()) {
+                dir.clone()
+            } else if let Some(first) = target_paths_win.first() {
+                first.parent().unwrap_or(&current_path_win).to_path_buf()
+            } else {
+                current_path_win.clone()
+            };
+
+            babydra_core::services::explore::spawn_explore_window(&path_to_open);
+        },
+    );
+
+    // 4. Copy location
+    let target_paths_loc = target_paths.clone();
+    let current_path_loc = current_path.clone();
+    builder = builder.item(&trans("explore.menu_copy_location"), "copy", move || {
+        let text = if target_paths_loc.is_empty() {
+            current_path_loc.to_string_lossy().to_string()
+        } else if target_paths_loc.len() == 1 {
+            target_paths_loc[0].to_string_lossy().to_string()
+        } else {
+            target_paths_loc
+                .iter()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        if let Some(display) = gtk4::gdk::Display::default() {
+            display.clipboard().set_text(&text);
+        }
+    });
+
+    // 5. Compress
+    let target_paths_compress = target_paths.clone();
+    let nav_compress = nav_callback.clone();
+    let current_p_compress = current_path.clone();
+    let parent_compress = parent.clone();
+    builder = builder.item(&trans("explore.menu_compress"), "folder", move || {
+        crate::explore::dialogs::show_compress_dialog(
+            target_paths_compress.clone(),
+            current_p_compress.clone(),
+            nav_compress.clone(),
+            Some(&parent_compress),
+        );
+    });
+
+    // 6. Decompress (if applicable)
+    let has_archive = target_paths.iter().any(|path| is_archive_file(path));
+    if has_archive {
+        let target_paths_decompress = target_paths.clone();
+        let nav_decompress = nav_callback.clone();
+        let current_p_decompress = current_path.clone();
+        let parent_decompress = parent.clone();
+        builder = builder.item(&trans("explore.menu_decompress"), "download", move || {
+            for path in &target_paths_decompress {
+                if is_archive_file(path) {
+                    crate::explore::dialogs::decompress_async(
+                        path.clone(),
+                        current_p_decompress.clone(),
+                        nav_decompress.clone(),
+                        Some(&parent_decompress),
+                    );
+                }
+            }
+        });
+    }
+
+    // 7. Custom Context Options
+    let target_paths_custom = target_paths.clone();
+    builder = builder.custom_items(move |vbox, popover| {
+        append_custom_items(vbox, popover, target_paths_custom, false);
+    });
+
+    // 8. More... submenu (options provided by other apps)
+    if target_paths.len() == 1 {
+        builder = crate::explore::context_menu::more::append_more_submenu(
+            builder,
+            &target_paths[0],
+        );
+    }
+
+    // 8. Footer actions (Cut, Copy, Paste, Rename, Trash, Properties)
+    let target_paths_cut = target_paths.clone();
+    let target_paths_copy = target_paths.clone();
+    let target_paths_trash = target_paths.clone();
+    let is_single = target_paths.len() == 1;
+    let clipboard_data = CLIPBOARD.with(|cb| cb.borrow().clone());
+    let has_paste_items = clipboard_data
+        .as_ref()
+        .is_some_and(|(sources, _)| !sources.is_empty());
+
+    let dest_dir = if target_paths.len() == 1 && target_paths[0].is_dir() {
+        target_paths[0].clone()
+    } else {
+        current_path.clone()
+    };
+    let nav_paste = nav_callback.clone();
+    let current_p_paste = current_path.clone();
+    let clipboard_data_paste = clipboard_data.clone();
+
+    let rename_path = if is_single {
+        target_paths[0].clone()
+    } else {
+        PathBuf::new()
+    };
+    let nav_rename = nav_callback.clone();
+    let current_p_rename = current_path.clone();
+    let parent_rename = parent.clone();
+
+    let nav_trash = nav_callback.clone();
+    let current_p_trash = current_path.clone();
+
+    let target_paths_props = target_paths.clone();
+    let parent_props = parent.clone();
+    let props_cb = move || {
+        crate::explore::dialogs::show_properties(
+            target_paths_props.clone(),
+            Some(&parent_props),
+        );
+    };
+
+    let pop_ref = builder.popover().clone();
+    let pop_cut = pop_ref.clone();
+    let pop_copy = pop_ref.clone();
+
+    builder = builder
+        .footer_sensitive(
+            "cut",
+            &trans("explore.menu_cut"),
+            !target_paths.is_empty(),
+            move || {
+                if let Some(root) = pop_cut.root() {
+                    crate::explore::context_menu::clipboard::apply_cut_dimming(
+                        &root,
+                        &target_paths_cut,
+                    );
+                }
+                CLIPBOARD.with(|cb| {
+                    cb.replace(Some((target_paths_cut.clone(), true)));
+                });
+            },
+        )
+        .footer_sensitive(
+            "copy",
+            &trans("explore.menu_copy"),
+            !target_paths.is_empty(),
+            move || {
+                if let Some(root) = pop_copy.root() {
+                    crate::explore::context_menu::clipboard::apply_cut_dimming(
+                        &root,
+                        &[],
+                    );
+                }
+                CLIPBOARD.with(|cb| {
+                    cb.replace(Some((target_paths_copy.clone(), false)));
+                });
+            },
+        )
+        .footer_sensitive(
+            "paste",
+            &trans("explore.menu_paste"),
+            has_paste_items,
+            move || {
+                if let Some((sources, is_cut)) = clipboard_data_paste.clone() {
+                    execute_paste(
+                        sources,
+                        dest_dir.clone(),
+                        is_cut,
+                        current_p_paste.clone(),
+                        nav_paste.clone(),
+                    );
+                }
+            },
+        )
+        .footer_sensitive(
+            "rename",
+            &trans("explore.menu_rename"),
+            is_single,
+            move || {
+                if is_single {
+                    crate::explore::dialogs::show_rename_dialog(
+                        &rename_path,
+                        current_p_rename.clone(),
+                        nav_rename.clone(),
+                        Some(&parent_rename),
+                    );
+                }
+            },
+        )
+        .footer_sensitive(
+            "trash",
+            &trans("explore.menu_trash"),
+            !target_paths.is_empty(),
+            move || {
+                let paths_c = target_paths_trash.clone();
+                let nav_c = nav_trash.clone();
+                let cp_c = current_p_trash.clone();
+                glib::spawn_future_local(async move {
+                    for path in paths_c {
+                        let _ = babydra_core::send_to_trash(path).await;
+                    }
+                    nav_c(cp_c);
+                });
+            },
+        )
+        .footer_sensitive(
+            "info",
+            &trans("explore.menu_properties"),
+            !target_paths.is_empty(),
+            props_cb,
+        );
+
+    builder.popup();
+}

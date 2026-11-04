@@ -81,7 +81,7 @@ pub fn add_sidebar_item(args: SidebarItemArgs<'_>) {
     all_buttons.borrow_mut().push((path.clone(), btn.clone()));
 
     // 1. Drop target: move files into this folder/drive
-    let drop_target = babydra_ui_kit::components::explore::create_drop_nav(
+    let drop_target = crate::explore::create_drop_nav(
         path,
         Some(nav_callback.clone()),
     );

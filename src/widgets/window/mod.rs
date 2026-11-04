@@ -376,7 +376,7 @@ pub fn create_explore_win(
     let main_paned_c = ui.main_paned.clone();
     let status_bar_c = status_bar_widgets_cell.clone();
 
-    babydra_core::i18n::watch_locale_change(move |_| {
+    babydra_ui_kit::ui::locale::watch_locale_change(move |_| {
         // Rebuild sidebar
         let new_sidebar = crate::widgets::sidebar::create_sidebar(session_sidebar.clone(), {
             let nav = nav_sidebar.clone();

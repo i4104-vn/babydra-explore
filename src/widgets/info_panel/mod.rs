@@ -1,6 +1,6 @@
 use crate::widgets::preview_panel;
 use babydra_core::FileEntry;
-use babydra_ui_kit::components::explore;
+use crate::explore;
 use gtk4::prelude::*;
 use gtk4::ScrolledWindow;
 
@@ -135,7 +135,7 @@ pub fn update_info_panel(widgets: &InfoPanelWidgets, selection: &[FileEntry]) {
 
     // Image Details Population
     if is_image && !is_dir {
-        if let Some(meta) = babydra_core::read_image_metadata(&entry.path) {
+        if let Some(meta) = babydra_ui_kit::ui::image_metadata::read_image_metadata(&entry.path) {
             widgets.lbl_img_dimensions.set_text(&meta.dimensions_str);
             widgets.lbl_img_pixels.set_text(&meta.pixels_str);
             widgets.lbl_img_dpi.set_text(&meta.dpi_str);
