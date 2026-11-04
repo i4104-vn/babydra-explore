@@ -1,25 +1,20 @@
 [package]
 name = "babydra-explore"
-version.workspace = true
+version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-babydra-core = { workspace = true }
-babydra-ui-kit = { workspace = true }
+babydra-core = { git = "https://github.com/i4104-vn/babydra-core.git", package = "babydra-core", tag = "v1.0.0" }
+babydra-ui-kit = { git = "https://github.com/i4104-vn/babydra-core.git", package = "babydra-ui-kit", tag = "v1.0.0" }
 
-# GUI
-gtk4 = { workspace = true }
-gtk4-layer-shell = { workspace = true }
-
-# Async & utilities
-tokio = { workspace = true }
+gtk4 = { version = "0.9", features = ["v4_10"] }
+tokio = { version = "1.0", features = ["rt", "rt-multi-thread", "time", "sync", "macros", "process", "fs", "io-util"] }
 tracing = "0.1"
-glib = { workspace = true }
-gio = { workspace = true }
-gdk4 = { workspace = true }
-gdk-pixbuf = { workspace = true }
+glib = "0.20"
+gio = "0.20"
+gdk4 = "0.9"
+gdk-pixbuf = "0.20"
 pulldown-cmark = "0.11"
 rayon = "1.10"
-chrono = { workspace = true }
-uuid = { version = "1.24.1", features = ["v4"] }
-
+chrono = "0.4"
+uuid = { version = "1.0", features = ["v4"] }
