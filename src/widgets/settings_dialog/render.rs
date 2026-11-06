@@ -35,13 +35,13 @@ pub fn show_settings_dialog(parent: &gtk4::Window, on_change_callback: impl Fn()
     sidebar_box.add_css_class("sidebar");
     sidebar_box.add_css_class("explore-sidebar");
     sidebar_box.add_css_class("explore-dialog-sidebar");
-    sidebar_box.set_width_request(68);
+    sidebar_box.set_width_request(52);
     sidebar_box.set_hexpand(false);
     sidebar_box.set_vexpand(true);
-    sidebar_box.set_margin_top(12);
-    sidebar_box.set_margin_bottom(12);
-    sidebar_box.set_margin_start(10);
-    sidebar_box.set_margin_end(2);
+    sidebar_box.set_margin_top(8);
+    sidebar_box.set_margin_bottom(8);
+    sidebar_box.set_margin_start(6);
+    sidebar_box.set_margin_end(0);
     sidebar_box.set_halign(Align::Center);
 
     let active_popover: Rc<RefCell<Option<gtk4::Popover>>> = Rc::new(RefCell::new(None));
@@ -53,10 +53,11 @@ pub fn show_settings_dialog(parent: &gtk4::Window, on_change_callback: impl Fn()
     header_btn.set_cursor_from_name(Some("pointer"));
     header_btn.set_halign(Align::Center);
     header_btn.set_valign(Align::Center);
-    header_btn.set_size_request(44, 44);
+    header_btn.set_size_request(40, 40);
+    header_btn.set_margin_bottom(10);
 
-    let header_img = babydra_ui_kit::ui::icon::get_icon("settings", 24);
-    header_img.set_pixel_size(24);
+    let header_img = babydra_ui_kit::ui::icon::get_icon("settings", 26);
+    header_img.set_pixel_size(26);
     header_img.set_valign(Align::Center);
     header_img.set_halign(Align::Center);
     header_btn.set_child(Some(&header_img));
@@ -71,7 +72,7 @@ pub fn show_settings_dialog(parent: &gtk4::Window, on_change_callback: impl Fn()
     // Separator
     let sep = Separator::new(Orientation::Horizontal);
     sep.add_css_class("sidebar-nav-separator");
-    sep.set_margin_top(4);
+    sep.set_margin_top(6);
     sep.set_margin_bottom(6);
     sidebar_box.append(&sep);
 
@@ -82,34 +83,37 @@ pub fn show_settings_dialog(parent: &gtk4::Window, on_change_callback: impl Fn()
     main_hbox.append(&sidebar_box);
 
     // 1. General (Settings Icon)
-    let icon_gen = babydra_ui_kit::ui::icon::get_icon("settings", 20);
-    icon_gen.set_pixel_size(20);
+    let icon_gen = babydra_ui_kit::ui::icon::get_icon("settings", 24);
+    icon_gen.set_pixel_size(24);
     let (btn_general, _) = babydra_ui_kit::components::create_sidebar_dock_btn(
         &icon_gen,
         &trans("explore.settings_general"),
         true,
         &active_popover,
     );
+    btn_general.set_size_request(40, 40);
 
     // 2. Keybinds (Terminal/Command Icon)
-    let icon_key = babydra_ui_kit::ui::icon::get_icon("terminal", 20);
-    icon_key.set_pixel_size(20);
+    let icon_key = babydra_ui_kit::ui::icon::get_icon("terminal", 24);
+    icon_key.set_pixel_size(24);
     let (btn_keybinds, _) = babydra_ui_kit::components::create_sidebar_dock_btn(
         &icon_key,
         &trans("explore.settings_keybinds"),
         false,
         &active_popover,
     );
+    btn_keybinds.set_size_request(40, 40);
 
     // 3. Context Menu (Folder/Menu Icon)
-    let icon_ctx = babydra_ui_kit::ui::icon::get_icon("folder", 20);
-    icon_ctx.set_pixel_size(20);
+    let icon_ctx = babydra_ui_kit::ui::icon::get_icon("folder", 24);
+    icon_ctx.set_pixel_size(24);
     let (btn_context, _) = babydra_ui_kit::components::create_sidebar_dock_btn(
         &icon_ctx,
         &trans("explore.settings_context_menu"),
         false,
         &active_popover,
     );
+    btn_context.set_size_request(40, 40);
 
     nav_container.append(&btn_general);
     nav_container.append(&btn_keybinds);

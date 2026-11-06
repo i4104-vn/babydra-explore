@@ -192,19 +192,47 @@ button.settings-pill.active-pill:hover {
 
 /* `.settings-card` is owned by `apps/settings.css`; dialogs are more
    compact, so scope the tighter padding/radius under the dialog root. */
-.explore-dialog .sidebar {
-    min-width: 68px;
-    width: 68px;
+.explore-dialog .sidebar,
+.explore-dialog .explore-sidebar,
+.explore-dialog-sidebar {
+    min-width: 52px;
+    max-width: 56px;
+    width: 52px;
     background-color: transparent;
     border: none;
     box-shadow: none;
-    margin: 0;
+    margin: 6px 0 6px 6px;
     padding: 0;
 }
 
-.explore-dialog .sidebar-item {
+.explore-dialog .sidebar-header-btn {
+    min-width: 40px;
+    min-height: 40px;
+    width: 40px;
+    height: 40px;
+    padding: 4px;
+    margin: 0 0 10px 0;
+    border-radius: 10px;
+}
+
+.explore-dialog .sidebar-nav-separator,
+.explore-dialog .profile-separator {
+    margin: 6px 0;
+    min-width: 32px;
+    width: 32px;
+    opacity: 0.25;
+}
+
+.explore-dialog .sidebar-item,
+.explore-dialog .sidebar-icon-btn {
+    min-width: 40px;
+    min-height: 40px;
+    width: 40px;
+    height: 40px;
+    padding: 4px;
+    margin: 2px 0;
     border: none;
-    border-radius: 12px;
+    border-radius: 10px;
     transition: background-color 0.15s ease, color 0.15s ease;
 }
 
